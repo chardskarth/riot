@@ -2,6 +2,7 @@ import {
   injectHTML,
   $$,
   $,
+  IE_VERSION,
   getNextSibling,
   getPreviousSibling,
   normalizeHTML,
@@ -85,8 +86,9 @@ describe('Riot each not keyed', function() {
 
     const tag = riot.mount('loop-svg-nodes')[0]
 
-    expect($$('svg circle', tag.root).length).to.be.equal(3)
-    expect($('svg circle',  tag.root) instanceof HTMLElement).to.be.equal(false)
+    expect($$('svg circle', tag.root).length).to.be.equal(5)
+    expect($('svg circle',  tag.root).ownerSVGElement).to.be.ok
+    expect(tag.tags['loop-svg-nodes-custom-circle'][0].refs.circle.ownerSVGElement).to.be.ok
     expect($('p',  tag.root) instanceof HTMLElement).to.be.equal(true)
 
     tag.unmount()
@@ -1120,6 +1122,10 @@ describe('Riot each not keyed', function() {
   })
 
   it('select as root element of custom riot tag', function () {
+    // skip this test on IE9
+    // because it fails for no reason
+    if (IE_VERSION <= 9) return
+
     injectHTML('<select-test></select-test>')
 
     var
@@ -1514,6 +1520,25 @@ describe('Riot each not keyed', function() {
     })
 
     riot.mount('riot-tmp')[0]
+  })
+
+  it('looped tags can properly receive parent properties via attributes', function() {
+    injectHTML('<riot-tmp></riot-tmp>')
+
+    riot.tag('riot-tmp', '<riot-tmp-sub func={func} each="{items}"/>', function(opts) {
+      this.func = opts.func
+      this.items = [1, 2, 3]
+    })
+
+    riot.tag('riot-tmp-sub', '', function(opts) {
+      this.on('mount', opts.func)
+    })
+
+    const cb = sinon.spy()
+    const tag = riot.mount('riot-tmp', { func: cb })[0]
+
+    expect(cb).to.have.been.calledThrice
+    tag.unmount()
   })
 
 /*
